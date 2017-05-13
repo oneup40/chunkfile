@@ -1,1 +1,1 @@
-from ChunkFile import ChunkFile, open
+from ChunkFile import *
