@@ -1,0 +1,7 @@
+# pip build artifacts
+build
+*.egg-info
+dist
+
+# python artifacts
+*.pyc
