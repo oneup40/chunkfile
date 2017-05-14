@@ -1,5 +1,7 @@
-import shutil, tempfile, unittest
+import shutil, sys, tempfile, unittest
 from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
 import chunkfile
 
 class TestChunkFileOpen(unittest.TestCase):
