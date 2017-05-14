@@ -1,0 +1,4 @@
+[run]
+branch = False
+cover_pylib = False
+source = ../chunkfile
