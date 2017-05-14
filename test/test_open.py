@@ -75,7 +75,7 @@ class TestChunkFileOpen(unittest.TestCase):
 
         entries = list(self.tmpdir.glob('*'))
         self.assertEqual(len(entries), 1)
-        self.assertGreater(entries[0].stat().st_size, HEADERSIZE)
+        self.assertTrue(entries[0].stat().st_size > HEADERSIZE)
 
         f = ChunkFile.open(self.tmpdir, mode='w+')
         data = f.read()
