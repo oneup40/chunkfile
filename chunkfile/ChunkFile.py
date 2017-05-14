@@ -171,7 +171,7 @@ class ChunkFile(object):
 
     def _do_write(self, offset, data):
         n = offset / CHUNKDATASIZE
-        while n > len(self.chunks):
+        while n >= len(self.chunks):
             self._add_new_chunk()
 
         nextchunkofs = (n+1) * CHUNKDATASIZE
