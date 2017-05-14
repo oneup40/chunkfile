@@ -243,14 +243,18 @@ class ChunkFile(object):
         self.chunks = []
         self.closed = False
         self.offset = 0
+        self.access = ''
 
         if not mode:
             raise ValueError('empty mode string')
+        if 'U' in mode:
+            raise NotImplementedError('universal newline mode')
         if mode[0] not in 'rwa':
             raise ValueError("mode string must begin with one of 'r', 'w', or 'a', not \"{}\"".format(mode))
 
         dirpath = Path(dirpath)
         if mode[0] == 'r':
+            self.access = 'r'
             if not dirpath.exists():
                 raise IOError('No such directory: {}'.format(dirpath))
             if not dirpath.is_dir():
@@ -259,12 +263,15 @@ class ChunkFile(object):
             self._open_existing(dirpath)
 
         if mode[0] == 'w':
+            self.access = 'w'
             self._create_new(dirpath)
 
         if mode[0] == 'a':
             raise NotImplementedError('append mode')
 
             # TODO
+            self.access = 'w'
+
             if dirpath.exists():
                 if not dirpath.is_dir():
                     raise ValueError('The specified path is not a directory: {}'.format(dirpath))
@@ -273,6 +280,12 @@ class ChunkFile(object):
             else:
                 self._create_new(dirpath)
 
+        for c in mode[1:]:
+            if c == '+':
+                self.access = 'rw'
+            else:
+                raise ValueError("Invalid mode ('{}')".format(mode))
+
     # TODO: buffering
     @staticmethod
     def open(dirpath, mode='a'):
@@ -280,11 +293,15 @@ class ChunkFile(object):
 
     # file.close(): close the file, deny further access
     def close(self):
-        self.flush()
-        self.closed = True
+        if not self.closed:
+            self.flush()
+            self.closed = True
 
     # file.flush(): flush the internal buffer
     def flush(self):
+        if self.closed:
+            raise ValueError('I/O operation on closed file')
+
         # we don't currently buffer anything :(
         # TODO: track which chunks are dirty and only update their hashes
         for i in range(len(self.chunks)):
@@ -303,6 +320,12 @@ class ChunkFile(object):
     #                        bytes if EOF is hit. If *size* is negative or
     #                        omitted, read all data.
     def read(self, size=-1):
+        if self.closed:
+            raise ValueError('I/O operation on closed file')
+
+        if 'r' not in self.access:
+            raise IOError('File not open for reading')
+
         if size < 0:
             size = self._nbytes() - self.offset
 
@@ -325,6 +348,9 @@ class ChunkFile(object):
     #   Note that if the file was opened with 'a' mode, this only affects the
     #        read position, not the write position.
     def seek(self, offset, whence=os.SEEK_SET):
+        if self.closed:
+            raise ValueError('I/O operation on closed file')
+
         if whence == os.SEEK_SET:
             startofs = 0
         elif whence == os.SEEK_CUR:
@@ -339,6 +365,9 @@ class ChunkFile(object):
 
     # file.tell(): Return the file's current position.
     def tell(self):
+        if self.closed:
+            raise ValueError('I/O operation on closed file')
+
         return self.offset
 
     # file.truncate([size]): Reduce the file's size.  Current position is
@@ -347,6 +376,12 @@ class ChunkFile(object):
     def truncate(self, size=None):
         # TODO: figure out what default does
         # TODO: figure out what size > current size does on various platforms
+
+        if self.closed:
+            raise ValueError('I/O operation on closed file')
+
+        if 'w' not in self.access:
+            raise IOError('File not open for writing')
 
         nchunks = size / CHUNKDATASIZE
         if nchunks == 0:
@@ -365,6 +400,12 @@ class ChunkFile(object):
 
     # file.write(str): Write str to file.
     def write(self, s):
+        if self.closed:
+            raise ValueError('I/O operation on closed file')
+
+        if 'w' not in self.access:
+            raise IOError('File not open for writing')
+
         self._do_write(self.offset, s)
         self.offset += len(s)
 

@@ -83,7 +83,7 @@ class TestChunkFileOpen(unittest.TestCase):
         self.assertEqual(len(entries), 1)
         self.assertGreater(entries[0].stat().st_size, HEADERSIZE)
 
-        f = ChunkFile.open(self.tmpdir, mode='w')
+        f = ChunkFile.open(self.tmpdir, mode='w+')
         data = f.read()
         f.close()
 
@@ -118,6 +118,40 @@ class TestChunkFileOpen(unittest.TestCase):
         with self.assertRaises(IOError):
             ChunkFile.open(path, 'w')
 
+    def testNonStringPath(self):
+        with self.assertRaises(TypeError):
+            ChunkFile.open(3, 'w')
+
+    def testBInMode(self):
+        with self.assertRaises(ValueError):
+            ChunkFile.open(self.tmpdir, 'wb')
+
+    def testUInMode(self):
+        with self.assertRaises(NotImplementedError):
+            ChunkFile.open(self.tmpdir, 'U')
+        with self.assertRaises(NotImplementedError):
+            ChunkFile.open(self.tmpdir, 'rU')
+
+    def testWRead(self):
+        f = ChunkFile.open(self.tmpdir, 'w')
+        with self.assertRaises(IOError):
+            f.read(10)
+
+        f.close()
+
+    def testRWrite(self):
+        f = ChunkFile.open(self.tmpdir, 'r')
+        with self.assertRaises(IOError):
+            f.write('x')
+
+        f.close()
+
+    def testRTruncate(self):
+        f = ChunkFile.open(self.tmpdir, 'r')
+        with self.assertRaises(IOError):
+            f.truncate()
+
+        f.close()
 
 # TODO: test open with string filename works
 # TODO: test open with Path filename works
