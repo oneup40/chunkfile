@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/oneup40/chunkfile.svg?branch=oneup40%2Fwip)](https://travis-ci.org/oneup40/chunkfile)
+
 Description
 ===========
 
