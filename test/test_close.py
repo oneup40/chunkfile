@@ -20,43 +20,37 @@ class TestChunkFileClose(unittest.TestCase):
         f = ChunkFile.open(self.tmpdir, 'w')
         f.close()
 
-        with self.assertRaises(ValueError):
-            f.flush()
+        self.assertRaises(ValueError, f.flush)
 
     def testReadAfterClose(self):
         f = ChunkFile.open(self.tmpdir, 'w')
         f.close()
 
-        with self.assertRaises(ValueError):
-            f.read(3)
+        self.assertRaises(ValueError, f.read, 3)
 
     def testSeekAfterClose(self):
         f = ChunkFile.open(self.tmpdir, 'w')
         f.close()
 
-        with self.assertRaises(ValueError):
-            f.seek(0)
+        self.assertRaises(ValueError, f.seek, 0)
 
     def testTellAfterClose(self):
         f = ChunkFile.open(self.tmpdir, 'w')
         f.close()
 
-        with self.assertRaises(ValueError):
-            f.tell()
+        self.assertRaises(ValueError, f.tell)
 
     def testTruncateAfterClose(self):
         f = ChunkFile.open(self.tmpdir, 'w')
         f.close()
 
-        with self.assertRaises(ValueError):
-            f.truncate()
+        self.assertRaises(ValueError, f.truncate)
 
     def testWriteAfterClose(self):
         f = ChunkFile.open(self.tmpdir, 'w')
         f.close()
 
-        with self.assertRaises(ValueError):
-            f.write('xyz')
+        self.assertRaises(ValueError, f.write, 'xyz')
 
 
 if __name__ == '__main__':

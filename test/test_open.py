@@ -13,16 +13,13 @@ class TestChunkFileOpen(unittest.TestCase):
 
 
     def testEmptyMode(self):
-        with self.assertRaises(ValueError):
-            ChunkFile.open(self.tmpdir, mode='')
+        self.assertRaises(ValueError, ChunkFile.open, self.tmpdir, mode='')
 
     def testNoRWA(self):
-        with self.assertRaises(ValueError):
-            ChunkFile.open(self.tmpdir, mode='z')
+        self.assertRaises(ValueError, ChunkFile.open, self.tmpdir, mode='z')
 
     def testRNonexisting(self):
-        with self.assertRaises(IOError):
-            ChunkFile.open(self.tmpdir.joinpath('NONEXISTING'), mode='r')
+        self.assertRaises(IOError, ChunkFile.open, self.tmpdir.joinpath('NONEXISTING'), mode='r')
 
     def testRExistingGood(self):
         testdata = 'this is some data'
@@ -39,16 +36,14 @@ class TestChunkFileOpen(unittest.TestCase):
         sub = self.tmpdir/'subdir'
         sub.mkdir()
 
-        with self.assertRaises(IOError):
-            ChunkFile.open(self.tmpdir, mode='r')
+        self.assertRaises(IOError, ChunkFile.open, self.tmpdir, mode='r')
 
     def testRExistingBadChunk(self):
         p = self.tmpdir/'badchunk'
         with p.open('wb') as f:
             f.write('randomdata')
 
-        with self.assertRaises(IOError):
-            ChunkFile.open(self.tmpdir, mode='r')
+        self.assertRaises(IOError, ChunkFile.open, self.tmpdir, mode='r')
 
     def testRExistingRepeatedChunkNum(self):
         # create one first
@@ -62,8 +57,7 @@ class TestChunkFileOpen(unittest.TestCase):
             with tempfile.NamedTemporaryFile(dir=str(self.tmpdir), delete=False) as dst:
                 dst.write(src.read())
 
-        with self.assertRaises(IOError):
-            ChunkFile.open(self.tmpdir, mode='r')
+        self.assertRaises(IOError, ChunkFile.open, self.tmpdir, mode='r')
 
     def testWExistingEmpty(self):
         f = ChunkFile.open(self.tmpdir, mode='w')
@@ -99,8 +93,7 @@ class TestChunkFileOpen(unittest.TestCase):
         with path.open('wb') as f:
             pass
 
-        with self.assertRaises(ValueError):
-            ChunkFile.open(path, 'r')
+        self.assertRaises(ValueError, ChunkFile.open, path, mode='r')
 
     def testWFile(self):
         path = self.tmpdir/'file'
@@ -109,48 +102,36 @@ class TestChunkFileOpen(unittest.TestCase):
         with path.open('wb') as f:
             pass
 
-        with self.assertRaises(IOError):
-            ChunkFile.open(path, 'w')
+        self.assertRaises(IOError, ChunkFile.open, path, mode='w')
 
     def testWMissingDir(self):
         path = self.tmpdir/'missing'/'dir'
 
-        with self.assertRaises(IOError):
-            ChunkFile.open(path, 'w')
+        self.assertRaises(IOError, ChunkFile.open, path, mode='w')
 
     def testNonStringPath(self):
-        with self.assertRaises(TypeError):
-            ChunkFile.open(3, 'w')
+        self.assertRaises(TypeError, ChunkFile.open, 3, mode='w')
 
     def testBInMode(self):
-        with self.assertRaises(ValueError):
-            ChunkFile.open(self.tmpdir, 'wb')
+        self.assertRaises(ValueError, ChunkFile.open, self.tmpdir, mode='wb')
 
     def testUInMode(self):
-        with self.assertRaises(NotImplementedError):
-            ChunkFile.open(self.tmpdir, 'U')
-        with self.assertRaises(NotImplementedError):
-            ChunkFile.open(self.tmpdir, 'rU')
+        self.assertRaises(NotImplementedError, ChunkFile.open, self.tmpdir, mode='U')
+        self.assertRaises(NotImplementedError, ChunkFile.open, self.tmpdir, mode='rU')
 
     def testWRead(self):
         f = ChunkFile.open(self.tmpdir, 'w')
-        with self.assertRaises(IOError):
-            f.read(10)
-
+        self.assertRaises(IOError, f.read, 10)
         f.close()
 
     def testRWrite(self):
         f = ChunkFile.open(self.tmpdir, 'r')
-        with self.assertRaises(IOError):
-            f.write('x')
-
+        self.assertRaises(IOError, f.write, 'x')
         f.close()
 
     def testRTruncate(self):
         f = ChunkFile.open(self.tmpdir, 'r')
-        with self.assertRaises(IOError):
-            f.truncate()
-
+        self.assertRaises(IOError, f.truncate)
         f.close()
 
 # TODO: test open with string filename works

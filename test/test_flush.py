@@ -34,8 +34,7 @@ class TestChunkFileFlush(unittest.TestCase):
         f = ChunkFile.open(self.tmpdir, 'w')
         f.close()
 
-        with self.assertRaises(ValueError):
-            f.flush()
+        self.assertRaises(ValueError, f.flush)
 
 if __name__ == '__main__':
     unittest.main()

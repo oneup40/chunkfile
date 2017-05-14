@@ -42,8 +42,7 @@ class TestChunkFileRead(unittest.TestCase):
         f = ChunkFile.open(self.tmpdir, 'r')
         f.close()
 
-        with self.assertRaises(ValueError):
-            f.read()
+        self.assertRaises(ValueError, f.read)
 
     def testReadZero(self):
         f = ChunkFile.open(self.tmpdir, 'r')
@@ -64,8 +63,7 @@ class TestChunkFileRead(unittest.TestCase):
 
         try:
             f = ChunkFile.open(tmpdir2, 'w')
-            with self.assertRaises(IOError):
-                f.read()
+            self.assertRaises(IOError, f.read)
         finally:
             shutil.rmtree(str(tmpdir2))
 
