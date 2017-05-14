@@ -5,3 +5,4 @@ dist
 
 # python artifacts
 *.pyc
+.coverage
