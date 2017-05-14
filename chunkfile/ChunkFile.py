@@ -111,15 +111,18 @@ class ChunkFile(object):
         self.chunks = [None] * len(entries)
         for entry in entries:
             if not entry.is_file():
-                raise InvalidChunkFileError('{} is not a regular file'.format(entry))
+                raise IOError('{} is not a regular file'.format(entry))
 
             with entry.open('rb') as f:
                 data = f.read(HEADERSIZE)
+                if len(data) < HEADERSIZE:
+                    raise IOError('{} is not a valid chunkfile'.format(entry))
+
                 hdr = ChunkFileHeader.unpack_from(data)
                 chunknum = hdr.chunknum
 
                 if self.chunks[chunknum]:
-                    raise InvalidChunkFileError('Multiple files with chunknum {:0>11d}'.format(chunknum))
+                    raise IOError('Multiple files with chunknum {:0>11d}'.format(chunknum))
 
                 self.chunks[chunknum] = (hdr, entry)
 
