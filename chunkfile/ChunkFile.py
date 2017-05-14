@@ -128,7 +128,10 @@ class ChunkFile(object):
             # same behavior as trying to open a file in a directory that doesn't exist
             raise IOError('No such file or directory: {}'.format(dirpath))
 
-        self._add_new_chunk()
+        if dirpath.exists():
+            self._open_existing(dirpath)
+
+        self.truncate(0)
 
     def _add_new_chunk(self):
         chunknum = len(self.chunks)
