@@ -33,7 +33,7 @@ class ChunkFileHeader(object):
         # 00-07: CHNKFILE
         if len(self.sig) != 8:
             raise InvalidHeaderError('Sig should be 8 characters')
-        buf[0x00:0x08] = '{:>8}'.format(self.sig)
+        buf[0x00:0x08] = '{0:>8}'.format(self.sig)
 
         # 08-13: 000.000.000\n
         # even with a new version every week, this gives us 19.2 years
@@ -44,31 +44,31 @@ class ChunkFileHeader(object):
             raise InvalidHeaderError('Minor version should be 0-999')
         if self.iface_version < 0 or self.iface_version > 999:
             raise InvalidHeaderError('Interface version should be 0-999')
-        buf[0x08:0x14] = '{:0>3}.{:0>3}.{:0>3}\n'.format(self.version[0], self.version[1], self.iface_version)
+        buf[0x08:0x14] = '{0:0>3}.{1:0>3}.{2:0>3}\n'.format(self.version[0], self.version[1], self.iface_version)
 
         # 14-1F: 00000000000\n
         # 100 billion chunks of 512MiB apiece yields max volume size of 46.6 PiB
         if self.chunknum < 0 or self.chunknum > 99999999999:
             raise InvalidHeaderError('Chunknum should be 0-99999999999')
-        buf[0x14:0x20] = '{:0>11}\n'.format(self.chunknum)
+        buf[0x14:0x20] = '{0:0>11}\n'.format(self.chunknum)
 
         # 20-2F: ...............\n
         # single char flags
         if len(self.flags) > 15:
             raise InvalidHeaderError('More than 15 flags not supported')
-        buf[0x20:0x30] = '{:.<15}\n'.format(self.flags)
+        buf[0x20:0x30] = '{0:.<15}\n'.format(self.flags)
 
         # 30-3F: sha256         \n
         # hash method
         if len(self.hash_algo) > 15:
             raise InvalidHeaderError('Hash algorithm must be less than 15 chars')
-        buf[0x30:0x40] = '{:<15}\n'.format(self.hash_algo)
+        buf[0x30:0x40] = '{0:<15}\n'.format(self.hash_algo)
 
         # 40-FF: 00000...00000\n...\n
         # hash in hex, followed by newline, followed by any ascii-printable
         #   padding until FE, followed by newline
         # max hash size is 190 hex chars which is 760 bits
-        buf[0x40:0x100] = '{:<191}\n'.format(self.hash + '\n')
+        buf[0x40:0x100] = '{0:<191}\n'.format(self.hash + '\n')
 
     @classmethod
     def unpack_from(self, buf):
@@ -111,25 +111,25 @@ class ChunkFile(object):
         self.chunks = [None] * len(entries)
         for entry in entries:
             if not entry.is_file():
-                raise IOError('{} is not a regular file'.format(entry))
+                raise IOError('{0} is not a regular file'.format(entry))
 
             with entry.open('rb') as f:
                 data = f.read(HEADERSIZE)
                 if len(data) < HEADERSIZE:
-                    raise IOError('{} is not a valid chunkfile'.format(entry))
+                    raise IOError('{0} is not a valid chunkfile'.format(entry))
 
                 hdr = ChunkFileHeader.unpack_from(data)
                 chunknum = hdr.chunknum
 
                 if self.chunks[chunknum]:
-                    raise IOError('Multiple files with chunknum {:0>11d}'.format(chunknum))
+                    raise IOError('Multiple files with chunknum {0:0>11d}'.format(chunknum))
 
                 self.chunks[chunknum] = (hdr, entry)
 
     def _create_new(self, dirpath):
         if not dirpath.parent.exists():
             # same behavior as trying to open a file in a directory that doesn't exist
-            raise IOError('No such file or directory: {}'.format(dirpath))
+            raise IOError('No such file or directory: {0}'.format(dirpath))
 
         if dirpath.exists():
             self._open_existing(dirpath)
@@ -138,7 +138,7 @@ class ChunkFile(object):
 
     def _add_new_chunk(self):
         chunknum = len(self.chunks)
-        pth = self.filename / 'chunk.{:0>11d}.dat'.format(chunknum)
+        pth = self.filename / 'chunk.{0:0>11d}.dat'.format(chunknum)
         with pth.open('wb') as f:
             hsh = hashlib.sha256().hexdigest()
 
@@ -250,15 +250,15 @@ class ChunkFile(object):
         if 'U' in mode:
             raise NotImplementedError('universal newline mode')
         if mode[0] not in 'rwa':
-            raise ValueError("mode string must begin with one of 'r', 'w', or 'a', not \"{}\"".format(mode))
+            raise ValueError("mode string must begin with one of 'r', 'w', or 'a', not \"{0}\"".format(mode))
 
         dirpath = Path(dirpath)
         if mode[0] == 'r':
             self.access = 'r'
             if not dirpath.exists():
-                raise IOError('No such directory: {}'.format(dirpath))
+                raise IOError('No such directory: {0}'.format(dirpath))
             if not dirpath.is_dir():
-                raise ValueError('The specified path is not a directory: {}'.format(dirpath))
+                raise ValueError('The specified path is not a directory: {0}'.format(dirpath))
 
             self._open_existing(dirpath)
 
@@ -274,7 +274,7 @@ class ChunkFile(object):
 
             if dirpath.exists():
                 if not dirpath.is_dir():
-                    raise ValueError('The specified path is not a directory: {}'.format(dirpath))
+                    raise ValueError('The specified path is not a directory: {0}'.format(dirpath))
 
                 self._open_existing(dirpath)
             else:
@@ -284,7 +284,7 @@ class ChunkFile(object):
             if c == '+':
                 self.access = 'rw'
             else:
-                raise ValueError("Invalid mode ('{}')".format(mode))
+                raise ValueError("Invalid mode ('{0}')".format(mode))
 
     # TODO: buffering
     @staticmethod

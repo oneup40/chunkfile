@@ -19,6 +19,7 @@ setup(
 		'Intended Audience :: Developers',
 		'License :: Free for non-commercial use',
 		'Operating System :: Microsoft :: Windows :: Windows 10',
+		'Programming Language :: Python :: 2.6',
 		'Programming Language :: Python :: 2.7',
 		'Topic :: Software Development :: Libraries',
 		'Topic :: System :: Filesystems',
