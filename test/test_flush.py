@@ -30,5 +30,12 @@ class TestChunkFileFlush(unittest.TestCase):
         self.assertEqual(len(files), 1)
         self.assertEqual(files[0].stat().st_size, HEADERSIZE + len(testdata))
 
+    def testFlushAfterClose(self):
+        f = ChunkFile.open(self.tmpdir, 'w')
+        f.close()
+
+        with self.assertRaises(ValueError):
+            f.flush()
+
 if __name__ == '__main__':
     unittest.main()
