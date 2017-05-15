@@ -7,6 +7,6 @@ install:
     - pip install pathlib
     - pip install unittest2
 script:
-    - pushd test && coverage run -m unittest2 discover && popd
+    - coverage run -m unittest2 discover
 after_success:
-    - pushd test && coveralls && popd
+    - coveralls

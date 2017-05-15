@@ -6,10 +6,10 @@ from chunkfile import *
 
 class TestChunkFileRead(unittest.TestCase):
     def setUp(self):
-        self.testdata = 'abcdefghijklmnopqrstuvwxyz'
+        self.testdata = 'abcdefghijklmnopqrstuvwxyz'.encode('ascii')
         self.tmpdir = Path(tempfile.mkdtemp())
 
-        f = ChunkFile.open(self.tmpdir, 'w')
+        f = ChunkFile.open(self.tmpdir, 'wb')
         f.write(self.testdata)
         f.close()
 
@@ -18,41 +18,41 @@ class TestChunkFileRead(unittest.TestCase):
 
 
     def testRead(self):
-        f = ChunkFile.open(self.tmpdir, 'r')
+        f = ChunkFile.open(self.tmpdir, 'rb')
         data = f.read(len(self.testdata))
         self.assertEqual(data, self.testdata)
         self.assertEqual(f.tell(), len(self.testdata))
         f.close()
 
     def testReadDefault(self):
-        f = ChunkFile.open(self.tmpdir, 'r')
+        f = ChunkFile.open(self.tmpdir, 'rb')
         data = f.read()
         self.assertEqual(data, self.testdata)
         self.assertEqual(f.tell(), len(self.testdata))
         f.close()
 
     def testReadNegative(self):
-        f = ChunkFile.open(self.tmpdir, 'r')
+        f = ChunkFile.open(self.tmpdir, 'rb')
         data = f.read(-57954)
         self.assertEqual(data, self.testdata)
         self.assertEqual(f.tell(), len(self.testdata))
         f.close()
 
     def testReadClosed(self):
-        f = ChunkFile.open(self.tmpdir, 'r')
+        f = ChunkFile.open(self.tmpdir, 'rb')
         f.close()
 
         self.assertRaises(ValueError, f.read)
 
     def testReadZero(self):
-        f = ChunkFile.open(self.tmpdir, 'r')
+        f = ChunkFile.open(self.tmpdir, 'rb')
         data = f.read(0)
-        self.assertEqual(data, '')
+        self.assertEqual(data, b'')
         self.assertEqual(f.tell(), 0)
         f.close()
 
     def testReadLong(self):
-        f = ChunkFile.open(self.tmpdir, 'r')
+        f = ChunkFile.open(self.tmpdir, 'rb')
         data = f.read(len(self.testdata) * 100)
         self.assertEqual(data, self.testdata)
         self.assertEqual(f.tell(), len(self.testdata))
@@ -62,7 +62,7 @@ class TestChunkFileRead(unittest.TestCase):
         tmpdir2 = Path(tempfile.mkdtemp())
 
         try:
-            f = ChunkFile.open(tmpdir2, 'w')
+            f = ChunkFile.open(tmpdir2, 'wb')
             self.assertRaises(IOError, f.read)
         finally:
             shutil.rmtree(str(tmpdir2))
@@ -71,21 +71,21 @@ class TestChunkFileRead(unittest.TestCase):
         tmpdir2 = Path(tempfile.mkdtemp())
 
         try:
-            f = ChunkFile.open(tmpdir2, 'w')
-            f.write('a' * CHUNKDATASIZE)
-            f.write('b' * CHUNKDATASIZE)
+            f = ChunkFile.open(tmpdir2, 'wb')
+            f.write('a'.encode('ascii') * CHUNKDATASIZE)
+            f.write('b'.encode('ascii') * CHUNKDATASIZE)
             f.close()
 
-            f = ChunkFile.open(tmpdir2, 'r')
+            f = ChunkFile.open(tmpdir2, 'rb')
             f.seek(CHUNKDATASIZE - 10)
             data = f.read(20)
-            self.assertEqual(data, 'a'*10 + 'b'*10)
+            self.assertEqual(data, b'a'*10 + b'b'*10)
             self.assertEqual(f.tell(), CHUNKDATASIZE + 10)
         finally:
             shutil.rmtree(str(tmpdir2))
 
     def testReadHugeOffset(self):
-        f = ChunkFile.open(self.tmpdir, 'r')
+        f = ChunkFile.open(self.tmpdir, 'rb')
         ofs = 20 * CHUNKSIZE
 
         f.seek(ofs)

@@ -33,7 +33,7 @@ class ChunkFileHeader(object):
         # 00-07: CHNKFILE
         if len(self.sig) != 8:
             raise InvalidHeaderError('Sig should be 8 characters')
-        buf[0x00:0x08] = '{0:>8}'.format(self.sig)
+        buf[0x00:0x08] = '{0:>8}'.format(self.sig).encode('ascii')
 
         # 08-13: 000.000.000\n
         # even with a new version every week, this gives us 19.2 years
@@ -44,31 +44,31 @@ class ChunkFileHeader(object):
             raise InvalidHeaderError('Minor version should be 0-999')
         if self.iface_version < 0 or self.iface_version > 999:
             raise InvalidHeaderError('Interface version should be 0-999')
-        buf[0x08:0x14] = '{0:0>3}.{1:0>3}.{2:0>3}\n'.format(self.version[0], self.version[1], self.iface_version)
+        buf[0x08:0x14] = '{0:0>3}.{1:0>3}.{2:0>3}\n'.format(self.version[0], self.version[1], self.iface_version).encode('ascii')
 
         # 14-1F: 00000000000\n
         # 100 billion chunks of 512MiB apiece yields max volume size of 46.6 PiB
         if self.chunknum < 0 or self.chunknum > 99999999999:
             raise InvalidHeaderError('Chunknum should be 0-99999999999')
-        buf[0x14:0x20] = '{0:0>11}\n'.format(self.chunknum)
+        buf[0x14:0x20] = '{0:0>11}\n'.format(self.chunknum).encode('ascii')
 
         # 20-2F: ...............\n
         # single char flags
         if len(self.flags) > 15:
             raise InvalidHeaderError('More than 15 flags not supported')
-        buf[0x20:0x30] = '{0:.<15}\n'.format(self.flags)
+        buf[0x20:0x30] = '{0:.<15}\n'.format(self.flags).encode('ascii')
 
         # 30-3F: sha256         \n
         # hash method
         if len(self.hash_algo) > 15:
             raise InvalidHeaderError('Hash algorithm must be less than 15 chars')
-        buf[0x30:0x40] = '{0:<15}\n'.format(self.hash_algo)
+        buf[0x30:0x40] = '{0:<15}\n'.format(self.hash_algo).encode('ascii')
 
         # 40-FF: 00000...00000\n...\n
         # hash in hex, followed by newline, followed by any ascii-printable
         #   padding until FE, followed by newline
         # max hash size is 190 hex chars which is 760 bits
-        buf[0x40:0x100] = '{0:<191}\n'.format(self.hash + '\n')
+        buf[0x40:0x100] = '{0:<191}\n'.format(self.hash + '\n').encode('ascii')
 
     @classmethod
     def unpack_from(self, buf):
@@ -81,6 +81,11 @@ class ChunkFileHeader(object):
         flags = buf[0x20:0x2F]
         hash_algo = buf[0x30:0x40].strip()
         hsh = buf[0x40:0x100]
+
+        try:
+            sig = sig.decode('ascii')
+        except UnicodeDecodeError:
+            raise InvalidHeaderError('Bad signature, expected CHNKFILE')
 
         if sig != SIGNATURE:
             raise InvalidHeaderError('Bad signature, expected CHNKFILE')
@@ -100,6 +105,11 @@ class ChunkFileHeader(object):
             if chunknum < 0: raise ValueError
         except ValueError:
             raise InvalidHeaderError('Invalid chunknum')
+
+        try:
+            flags = flags.decode('ascii')
+        except UnicodeDecodeError:
+            raise InvalidHeaderError('Invalid flags')
 
         return ChunkFileHeader(sig, version, iface_version, chunknum, flags, hash_algo, hsh)
 
@@ -155,11 +165,11 @@ class ChunkFile(object):
         self.chunks.append((hdr, pth))
 
     def _do_read(self, offset, length):
-        n = offset / CHUNKDATASIZE
+        n = offset // CHUNKDATASIZE
         if n > len(self.chunks):
             return ''
 
-        s = ''
+        s = b''
         with self.chunks[n][1].open('rb') as f:
             f.seek(HEADERSIZE + (offset % CHUNKDATASIZE))
             s += f.read(length)
@@ -170,7 +180,7 @@ class ChunkFile(object):
         return s
 
     def _do_write(self, offset, data):
-        n = offset / CHUNKDATASIZE
+        n = offset // CHUNKDATASIZE
         while n >= len(self.chunks):
             self._add_new_chunk()
 
@@ -219,7 +229,7 @@ class ChunkFile(object):
     #   name: nothing interesting
     #   mode:
     #        one of:
-    #           'r': read -- don't modify file
+    #            'r': read -- don't modify file
     #            'w': write -- truncate file while opening
     #            'a': append -- don't truncate file while opening; all writes
     #                            are at EOF regardless of current position.
@@ -235,9 +245,10 @@ class ChunkFile(object):
     #        <0: system default
     #
     # We're not very interested in using chunkfiles for plaintext for now.
-    # Accordingly, we won't support 'b' or 'U' in mode, or 1 for buffering.
+    # Accordingly, we won't support 'U' in mode, or 1 for buffering.
+    # Mode must contain 'b' (text data not supported)
 
-    def __init__(self, dirpath, mode='a'):
+    def __init__(self, dirpath, mode='ab'):
         self.filename = Path(dirpath)
         self.mode = mode
         self.chunks = []
@@ -249,6 +260,8 @@ class ChunkFile(object):
             raise ValueError('empty mode string')
         if 'U' in mode:
             raise NotImplementedError('universal newline mode')
+        if 'b' not in mode:
+            raise NotImplementedError('text mode')
         if mode[0] not in 'rwa':
             raise ValueError("mode string must begin with one of 'r', 'w', or 'a', not \"{0}\"".format(mode))
 
@@ -283,6 +296,8 @@ class ChunkFile(object):
         for c in mode[1:]:
             if c == '+':
                 self.access = 'rw'
+            elif c == 'b':
+                pass
             else:
                 raise ValueError("Invalid mode ('{0}')".format(mode))
 

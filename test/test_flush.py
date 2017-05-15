@@ -13,14 +13,14 @@ class TestChunkFileFlush(unittest.TestCase):
 
 
     def testFlush(self):
-        f = ChunkFile.open(self.tmpdir, 'w')
+        f = ChunkFile.open(self.tmpdir, 'wb')
 
         f.flush()
         files = list(self.tmpdir.glob('*'))
         self.assertEqual(len(files), 1)
         self.assertEqual(files[0].stat().st_size, HEADERSIZE)
 
-        testdata = 'asdfghjklqwertyuiopzxcvnm,'
+        testdata = 'asdfghjklqwertyuiopzxcvnm,'.encode('ascii')
         f.write(testdata)
         f.flush()
         self.assertEqual(len(files), 1)
@@ -31,7 +31,7 @@ class TestChunkFileFlush(unittest.TestCase):
         self.assertEqual(files[0].stat().st_size, HEADERSIZE + len(testdata))
 
     def testFlushAfterClose(self):
-        f = ChunkFile.open(self.tmpdir, 'w')
+        f = ChunkFile.open(self.tmpdir, 'wb')
         f.close()
 
         self.assertRaises(ValueError, f.flush)

@@ -1,1 +1,1 @@
-from ChunkFile import *
+from .ChunkFile import *

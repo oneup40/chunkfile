@@ -16,39 +16,42 @@ class TestChunkFileOpen(unittest.TestCase):
         self.assertRaises(ValueError, ChunkFile.open, self.tmpdir, mode='')
 
     def testNoRWA(self):
-        self.assertRaises(ValueError, ChunkFile.open, self.tmpdir, mode='z')
+        self.assertRaises(ValueError, ChunkFile.open, self.tmpdir, mode='zb')
+
+    def testNoB(self):
+        self.assertRaises(NotImplementedError, ChunkFile.open, self.tmpdir, mode='r')
 
     def testRNonexisting(self):
-        self.assertRaises(IOError, ChunkFile.open, self.tmpdir.joinpath('NONEXISTING'), mode='r')
+        self.assertRaises(IOError, ChunkFile.open, self.tmpdir.joinpath('NONEXISTING'), mode='rb')
 
     def testRExistingGood(self):
-        testdata = 'this is some data'
+        testdata = 'this is some data'.encode('ascii')
 
         # create one first
-        f = ChunkFile.open(self.tmpdir, mode='w')
+        f = ChunkFile.open(self.tmpdir, mode='wb')
         f.write(testdata)
         f.close()
 
-        f = ChunkFile.open(self.tmpdir, mode='r')
+        f = ChunkFile.open(self.tmpdir, mode='rb')
         self.assertEqual(f.read(), testdata)
 
     def testRExistingSubdir(self):
         sub = self.tmpdir/'subdir'
         sub.mkdir()
 
-        self.assertRaises(IOError, ChunkFile.open, self.tmpdir, mode='r')
+        self.assertRaises(IOError, ChunkFile.open, self.tmpdir, mode='rb')
 
     def testRExistingBadChunk(self):
         p = self.tmpdir/'badchunk'
         with p.open('wb') as f:
-            f.write('randomdata')
+            f.write('randomdata'.encode('ascii'))
 
-        self.assertRaises(IOError, ChunkFile.open, self.tmpdir, mode='r')
+        self.assertRaises(IOError, ChunkFile.open, self.tmpdir, mode='rb')
 
     def testRExistingRepeatedChunkNum(self):
         # create one first
-        f = ChunkFile.open(self.tmpdir, mode='w')
-        f.write('this is a test')
+        f = ChunkFile.open(self.tmpdir, mode='wb')
+        f.write('this is a test'.encode('ascii'))
         f.close()
 
         # Order is important here, otherwise the glob will pick up dst and
@@ -57,10 +60,10 @@ class TestChunkFileOpen(unittest.TestCase):
             with tempfile.NamedTemporaryFile(dir=str(self.tmpdir), delete=False) as dst:
                 dst.write(src.read())
 
-        self.assertRaises(IOError, ChunkFile.open, self.tmpdir, mode='r')
+        self.assertRaises(IOError, ChunkFile.open, self.tmpdir, mode='rb')
 
     def testWExistingEmpty(self):
-        f = ChunkFile.open(self.tmpdir, mode='w')
+        f = ChunkFile.open(self.tmpdir, mode='wb')
         f.close()
 
         entries = list(self.tmpdir.glob('*'))
@@ -69,22 +72,22 @@ class TestChunkFileOpen(unittest.TestCase):
 
     def testWExistingTruncate(self):
         # create one first
-        f = ChunkFile.open(self.tmpdir, mode='w')
-        f.write('blah blah blah')
+        f = ChunkFile.open(self.tmpdir, mode='wb')
+        f.write('blah blah blah'.encode('ascii'))
         f.close()
 
         entries = list(self.tmpdir.glob('*'))
         self.assertEqual(len(entries), 1)
         self.assertTrue(entries[0].stat().st_size > HEADERSIZE)
 
-        f = ChunkFile.open(self.tmpdir, mode='w+')
+        f = ChunkFile.open(self.tmpdir, mode='w+b')
         data = f.read()
         f.close()
 
         entries = list(self.tmpdir.glob('*'))
         self.assertEqual(len(entries), 1)
         self.assertEqual(entries[0].stat().st_size, HEADERSIZE)
-        self.assertEqual(data, '')
+        self.assertEqual(data, b'')
 
     def testRFile(self):
         path = self.tmpdir/'file'
@@ -93,7 +96,7 @@ class TestChunkFileOpen(unittest.TestCase):
         with path.open('wb') as f:
             pass
 
-        self.assertRaises(ValueError, ChunkFile.open, path, mode='r')
+        self.assertRaises(ValueError, ChunkFile.open, path, mode='rb')
 
     def testWFile(self):
         path = self.tmpdir/'file'
@@ -102,35 +105,32 @@ class TestChunkFileOpen(unittest.TestCase):
         with path.open('wb') as f:
             pass
 
-        self.assertRaises(IOError, ChunkFile.open, path, mode='w')
+        self.assertRaises(IOError, ChunkFile.open, path, mode='wb')
 
     def testWMissingDir(self):
         path = self.tmpdir/'missing'/'dir'
 
-        self.assertRaises(IOError, ChunkFile.open, path, mode='w')
+        self.assertRaises(IOError, ChunkFile.open, path, mode='wb')
 
     def testNonStringPath(self):
-        self.assertRaises(TypeError, ChunkFile.open, 3, mode='w')
-
-    def testBInMode(self):
-        self.assertRaises(ValueError, ChunkFile.open, self.tmpdir, mode='wb')
+        self.assertRaises(TypeError, ChunkFile.open, 3, mode='wb')
 
     def testUInMode(self):
         self.assertRaises(NotImplementedError, ChunkFile.open, self.tmpdir, mode='U')
         self.assertRaises(NotImplementedError, ChunkFile.open, self.tmpdir, mode='rU')
 
     def testWRead(self):
-        f = ChunkFile.open(self.tmpdir, 'w')
+        f = ChunkFile.open(self.tmpdir, 'wb')
         self.assertRaises(IOError, f.read, 10)
         f.close()
 
     def testRWrite(self):
-        f = ChunkFile.open(self.tmpdir, 'r')
-        self.assertRaises(IOError, f.write, 'x')
+        f = ChunkFile.open(self.tmpdir, 'rb')
+        self.assertRaises(IOError, f.write, 'x'.encode('ascii'))
         f.close()
 
     def testRTruncate(self):
-        f = ChunkFile.open(self.tmpdir, 'r')
+        f = ChunkFile.open(self.tmpdir, 'rb')
         self.assertRaises(IOError, f.truncate)
         f.close()
 
