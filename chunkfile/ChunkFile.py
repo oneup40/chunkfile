@@ -47,7 +47,8 @@ class ChunkFileHeader(object):
         buf[0x08:0x14] = '{0:0>3}.{1:0>3}.{2:0>3}\n'.format(self.version[0], self.version[1], self.iface_version).encode('ascii')
 
         # 14-1F: 00000000000\n
-        # 100 billion chunks of 512MiB apiece yields max volume size of 46.6 PiB
+        # 100 billion chunks of 512MiB apiece yields max volume size of 46.6 PiB.
+        # Note that 16.0 PiB is the max limit for a 64-bit number.
         if self.chunknum < 0 or self.chunknum > 99999999999:
             raise InvalidHeaderError('Chunknum should be 0-99999999999')
         buf[0x14:0x20] = '{0:0>11}\n'.format(self.chunknum).encode('ascii')
@@ -200,7 +201,7 @@ class ChunkFile(object):
             nbytes += (len(self.chunks) - 1) * CHUNKDATASIZE
 
         if self.chunks:
-            nbytes += self.chunks[-1][1].stat().st_size
+            nbytes += self.chunks[-1][1].stat().st_size - HEADERSIZE
 
         return nbytes
 
@@ -363,6 +364,12 @@ class ChunkFile(object):
     #   Note that if the file was opened with 'a' mode, this only affects the
     #        read position, not the write position.
     def seek(self, offset, whence=os.SEEK_SET):
+        # Error conditions seem *very* platform-specific
+        # Linux:
+        #   * Seek to negative offset makes it to syscall which returns EINVAL.
+        #       Python turns the EINVAL into an IOError Errno 22.
+        #   * Bad seek mode is caught by Python and doesn't make a syscall at
+        #       all. Python raises IOError Errno 22.
         if self.closed:
             raise ValueError('I/O operation on closed file')
 
@@ -373,10 +380,13 @@ class ChunkFile(object):
         elif whence == os.SEEK_END:
             startofs = self._nbytes()
         else:
-            # TODO: figure out what python usually does for this case
-            startofs = 0
+            raise IOError('Invalid argument')
 
-        self.offset = startofs + offset
+        new_offset = startofs + offset
+        if new_offset < 0 or new_offset >= 2**64:
+            raise IOError('Invalid argument')
+
+        self.offset = new_offset
 
     # file.tell(): Return the file's current position.
     def tell(self):
@@ -411,7 +421,7 @@ class ChunkFile(object):
             self._add_new_chunk()
 
         with self.chunks[-1][1].open('r+b') as f:
-            f.truncate(size % CHUNKDATASIZE)
+            f.truncate(HEADERSIZE + (size % CHUNKDATASIZE))
 
     # file.write(str): Write str to file.
     def write(self, s):
