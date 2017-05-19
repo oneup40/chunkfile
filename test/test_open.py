@@ -18,6 +18,9 @@ class TestChunkFileOpen(unittest.TestCase):
     def testNoRWA(self):
         self.assertRaises(ValueError, ChunkFile.open, self.tmpdir, mode='zb')
 
+    def testBadModeFlag(self):
+        self.assertRaises(ValueError, ChunkFile.open, self.tmpdir, mode='rzb')
+
     def testNoB(self):
         self.assertRaises(NotImplementedError, ChunkFile.open, self.tmpdir, mode='r')
 
