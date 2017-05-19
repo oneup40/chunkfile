@@ -1,4 +1,4 @@
-import hashlib,os
+import os
 from pathlib import Path
 
 SIGNATURE = "CHNKFILE"
@@ -14,14 +14,11 @@ class UnsupportedVersionError(Exception): pass
 class ChunkFileHeader(object):
     # Header page uses 4KiB of each 512MiB chunk, 0.00077% overhead
 
-    def __init__(self, sig, version, iface_version, chunknum, flags, hash_algo, hsh):
+    def __init__(self, sig, version, iface_version, chunknum):
         self.sig = sig
         self.version = version
         self.iface_version = iface_version
         self.chunknum = chunknum
-        self.flags = flags
-        self.hash_algo = hash_algo
-        self.hash = hsh
 
     @staticmethod
     def size(): return HEADERSIZE
@@ -53,23 +50,8 @@ class ChunkFileHeader(object):
             raise InvalidHeaderError('Chunknum should be 0-99999999999')
         buf[0x14:0x20] = '{0:0>11}\n'.format(self.chunknum).encode('ascii')
 
-        # 20-2F: ...............\n
-        # single char flags
-        if len(self.flags) > 15:
-            raise InvalidHeaderError('More than 15 flags not supported')
-        buf[0x20:0x30] = '{0:.<15}\n'.format(self.flags).encode('ascii')
-
-        # 30-3F: sha256         \n
-        # hash method
-        if len(self.hash_algo) > 15:
-            raise InvalidHeaderError('Hash algorithm must be less than 15 chars')
-        buf[0x30:0x40] = '{0:<15}\n'.format(self.hash_algo).encode('ascii')
-
-        # 40-FF: 00000...00000\n...\n
-        # hash in hex, followed by newline, followed by any ascii-printable
-        #   padding until FE, followed by newline
-        # max hash size is 190 hex chars which is 760 bits
-        buf[0x40:0x100] = '{0:<191}\n'.format(self.hash + '\n').encode('ascii')
+        # 020-FFF: reserved, must be \n
+        buf[0x020:0xFFF] = '\n'.encode('ascii') * 0xFE0
 
     @classmethod
     def unpack_from(self, buf):
@@ -79,9 +61,6 @@ class ChunkFileHeader(object):
         sig = buf[0x00:0x08]
         verdata = buf[0x08:0x14]
         chunknumdata = buf[0x14:0x20]
-        flags = buf[0x20:0x2F]
-        hash_algo = buf[0x30:0x40].strip()
-        hsh = buf[0x40:0x100]
 
         try:
             sig = sig.decode('ascii')
@@ -107,12 +86,7 @@ class ChunkFileHeader(object):
         except ValueError:
             raise InvalidHeaderError('Invalid chunknum')
 
-        try:
-            flags = flags.decode('ascii')
-        except UnicodeDecodeError:
-            raise InvalidHeaderError('Invalid flags')
-
-        return ChunkFileHeader(sig, version, iface_version, chunknum, flags, hash_algo, hsh)
+        return ChunkFileHeader(sig, version, iface_version, chunknum)
 
 class InvalidChunkFileError(Exception): pass
 
@@ -151,12 +125,9 @@ class ChunkFile(object):
         chunknum = len(self.chunks)
         pth = self.filename / 'chunk.{0:0>11d}.dat'.format(chunknum)
         with pth.open('wb') as f:
-            hsh = hashlib.sha256().hexdigest()
-
             hdr = ChunkFileHeader(sig=SIGNATURE, version=VERSION,
                                   iface_version=IFACE_VERSION,
-                                  chunknum=len(self.chunks), flags='',
-                                  hash_algo='sha256', hsh=hsh)
+                                  chunknum=len(self.chunks))
 
             buf = bytearray(HEADERSIZE)
             hdr.pack_into(buf)
@@ -204,22 +175,6 @@ class ChunkFile(object):
             nbytes += self.chunks[-1][1].stat().st_size - HEADERSIZE
 
         return nbytes
-
-    def _update_hash(self, n):
-        chunk = self.chunks[n]
-        with chunk[1].open('r+b') as f:
-            f.seek(HEADERSIZE)
-            data = f.read()
-            hsh = hashlib.sha256(data).hexdigest()
-
-            chunk[0].hash_algo = 'sha256'
-            chunk[0].hash = hsh
-
-            buf = bytearray(HEADERSIZE)
-            chunk[0].pack_into(buf)
-
-            f.seek(0)
-            f.write(buf)
 
     # public API starts here
 
@@ -319,9 +274,6 @@ class ChunkFile(object):
             raise ValueError('I/O operation on closed file')
 
         # we don't currently buffer anything :(
-        # TODO: track which chunks are dirty and only update their hashes
-        for i in range(len(self.chunks)):
-            self._update_hash(i)
 
     # file.fileno(): provide internal file descriptor. Chunkfiles do NOT
     #                     have an FD!
