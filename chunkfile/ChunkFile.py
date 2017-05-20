@@ -112,13 +112,14 @@ class ChunkFile(object):
                 self.chunks[chunknum] = (hdr, entry)
 
     def _create_new(self, dirpath):
-        if not dirpath.parent.exists():
-            # same behavior as trying to open a file in a directory that doesn't exist
-            raise IOError('No such file or directory: {0}'.format(dirpath))
-
         if dirpath.exists():
             self._open_existing(dirpath)
         else:
+            if not dirpath.parent.exists():
+                # same behavior as trying to open a file in a directory that doesn't exist
+                raise IOError('No such file or directory: {0}'.format(dirpath))
+
+            dirpath.mkdir()
             self.chunks = []
 
         self.truncate(0)

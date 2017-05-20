@@ -65,6 +65,18 @@ class TestChunkFileOpen(unittest.TestCase):
 
         self.assertRaises(IOError, ChunkFile.open, self.tmpdir, mode='rb')
 
+    def testWNonExisting(self):
+        pth = self.tmpdir/'newdir'
+        self.assertTrue(not pth.exists())
+
+        f = ChunkFile.open(pth, mode='wb')
+        f.close()
+
+        self.assertTrue(pth.exists())
+
+        filelist = list(pth.glob('*'))
+        self.assertEqual(len(filelist), 0)
+
     def testWExistingEmpty(self):
         f = ChunkFile.open(self.tmpdir, mode='wb')
         f.close()
