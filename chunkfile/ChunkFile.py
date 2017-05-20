@@ -51,7 +51,7 @@ class ChunkFileHeader(object):
         buf[0x14:0x20] = '{0:0>11}\n'.format(self.chunknum).encode('ascii')
 
         # 020-FFF: reserved, must be \n
-        buf[0x020:0xFFF] = '\n'.encode('ascii') * 0xFE0
+        buf[0x0020:0x1000] = '\n'.encode('ascii') * 0xFE0
 
     @classmethod
     def unpack_from(self, buf):
@@ -118,6 +118,8 @@ class ChunkFile(object):
 
         if dirpath.exists():
             self._open_existing(dirpath)
+        else:
+            self.chunks = []
 
         self.truncate(0)
 
@@ -360,9 +362,9 @@ class ChunkFile(object):
         if 'w' not in self.access:
             raise IOError('File not open for writing')
 
-        nchunks = size / CHUNKDATASIZE
-        if nchunks == 0:
-            nchunks = 1
+        nchunks = size // CHUNKDATASIZE
+        if size % CHUNKDATASIZE:
+            nchunks += 1
 
         for chunk in self.chunks[nchunks:]:
             chunk[1].unlink()
@@ -372,8 +374,15 @@ class ChunkFile(object):
         while len(self.chunks) < nchunks:
             self._add_new_chunk()
 
-        with self.chunks[-1][1].open('r+b') as f:
-            f.truncate(HEADERSIZE + (size % CHUNKDATASIZE))
+        if nchunks:
+            lastchunksize = size % CHUNKDATASIZE
+            if not lastchunksize: lastchunksize = CHUNKDATASIZE
+
+            with self.chunks[-1][1].open('r+b') as f:
+                f.truncate(HEADERSIZE + lastchunksize)
+
+        else:
+            self._add_new_chunk()
 
     # file.write(str): Write str to file.
     def write(self, s):
