@@ -3,7 +3,7 @@ from pathlib import Path
 
 from chunkfile import *
 
-class TestChunkFileSeek(unittest.TestCase):
+class TestChunkFileTruncate(unittest.TestCase):
     def setUp(self):
         self.tmpdir = Path(tempfile.mkdtemp())
 
@@ -129,6 +129,23 @@ class TestChunkFileSeek(unittest.TestCase):
         f = ChunkFile.open(self.tmpdir, 'rb')
         data = f.read()
         self.assertEqual(data, b'\x00' * 4096)
+
+    def testTruncateZeroFillMultipleChunks(self):
+        f = ChunkFile.open(self.tmpdir, 'wb')
+        f.truncate(CHUNKDATASIZE * 3 + 100)
+        f.close()
+
+        filelist = list(self.tmpdir.glob('*'))
+        self.assertEqual(len(filelist), 4)
+        totalsize = sum([pth.stat().st_size for pth in filelist])
+        self.assertEqual(totalsize, HEADERSIZE * 4 + CHUNKDATASIZE * 3 + 100)
+
+        f = ChunkFile.open(self.tmpdir, 'rb')
+        read = 0
+        while read < CHUNKDATASIZE * 3 + 100:
+            data = f.read(1024 * 1024)
+            self.assertEqual(data, b'\x00' * len(data))
+            read += len(data)
 
 if __name__ == '__main__':
     unittest.main()

@@ -93,11 +93,11 @@ class TestChunkFileRead(unittest.TestCase):
         # standard behavior is to not move offset after read
         #   if current pos is past EOF
         data = f.read(5)
-        self.assertEqual(data, '')
+        self.assertEqual(data, b'')
         self.assertEqual(f.tell(), ofs)
 
         data = f.read()
-        self.assertEqual(data, '')
+        self.assertEqual(data, b'')
         self.assertEqual(f.tell(), ofs)
         
 

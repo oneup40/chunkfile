@@ -138,10 +138,20 @@ class ChunkFile(object):
 
         self.chunks.append((hdr, pth))
 
+    def _zerofill_chunk(self, chunk):
+        with chunk[1].open('r+b') as f:
+            f.truncate(CHUNKSIZE)
+
+    def _ensure_chunk(self, chunknum):
+        while chunknum >= len(self.chunks):
+            self._add_new_chunk()
+        for chunk in self.chunks[:-1]:
+            self._zerofill_chunk(chunk)
+
     def _do_read(self, offset, length):
         n = offset // CHUNKDATASIZE
-        if n > len(self.chunks):
-            return ''
+        if n >= len(self.chunks):
+            return b''
 
         s = b''
         with self.chunks[n][1].open('rb') as f:
@@ -224,12 +234,14 @@ class ChunkFile(object):
             raise ValueError("mode string must begin with one of 'r', 'w', or 'a', not \"{0}\"".format(mode))
 
         dirpath = Path(dirpath)
+
+        if dirpath.exists() and not dirpath.is_dir():
+            raise ValueError('The specified path is not a directory: {0}'.format(dirpath))
+
         if mode[0] == 'r':
             self.access = 'r'
             if not dirpath.exists():
                 raise IOError('No such directory: {0}'.format(dirpath))
-            if not dirpath.is_dir():
-                raise ValueError('The specified path is not a directory: {0}'.format(dirpath))
 
             self._open_existing(dirpath)
 
@@ -244,9 +256,6 @@ class ChunkFile(object):
             self.access = 'w'
 
             if dirpath.exists():
-                if not dirpath.is_dir():
-                    raise ValueError('The specified path is not a directory: {0}'.format(dirpath))
-
                 self._open_existing(dirpath)
             else:
                 self._create_new(dirpath)
@@ -368,21 +377,18 @@ class ChunkFile(object):
 
         for chunk in self.chunks[nchunks:]:
             chunk[1].unlink()
-
         self.chunks = self.chunks[:nchunks]
 
-        while len(self.chunks) < nchunks:
-            self._add_new_chunk()
+        if nchunks == 0:
+            return
 
-        if nchunks:
-            lastchunksize = size % CHUNKDATASIZE
-            if not lastchunksize: lastchunksize = CHUNKDATASIZE
+        self._ensure_chunk(nchunks - 1)
 
-            with self.chunks[-1][1].open('r+b') as f:
-                f.truncate(HEADERSIZE + lastchunksize)
+        lastchunksize = size % CHUNKDATASIZE
+        if not lastchunksize: lastchunksize = CHUNKDATASIZE
 
-        else:
-            self._add_new_chunk()
+        with self.chunks[-1][1].open('r+b') as f:
+            f.truncate(HEADERSIZE + lastchunksize)
 
     # file.write(str): Write str to file.
     def write(self, s):

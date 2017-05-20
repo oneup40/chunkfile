@@ -70,8 +70,7 @@ class TestChunkFileOpen(unittest.TestCase):
         f.close()
 
         entries = list(self.tmpdir.glob('*'))
-        self.assertEqual(len(entries), 1)
-        self.assertEqual(entries[0].stat().st_size, HEADERSIZE)
+        self.assertEqual(len(entries), 0)
 
     def testWExistingTruncate(self):
         # create one first
@@ -88,8 +87,7 @@ class TestChunkFileOpen(unittest.TestCase):
         f.close()
 
         entries = list(self.tmpdir.glob('*'))
-        self.assertEqual(len(entries), 1)
-        self.assertEqual(entries[0].stat().st_size, HEADERSIZE)
+        self.assertEqual(len(entries), 0)
         self.assertEqual(data, b'')
 
     def testRFile(self):
@@ -108,7 +106,7 @@ class TestChunkFileOpen(unittest.TestCase):
         with path.open('wb') as f:
             pass
 
-        self.assertRaises(IOError, ChunkFile.open, path, mode='wb')
+        self.assertRaises(ValueError, ChunkFile.open, path, mode='wb')
 
     def testWMissingDir(self):
         path = self.tmpdir/'missing'/'dir'

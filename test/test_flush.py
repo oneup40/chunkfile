@@ -17,16 +17,17 @@ class TestChunkFileFlush(unittest.TestCase):
 
         f.flush()
         files = list(self.tmpdir.glob('*'))
-        self.assertEqual(len(files), 1)
-        self.assertEqual(files[0].stat().st_size, HEADERSIZE)
+        self.assertEqual(len(files), 0)
 
         testdata = 'asdfghjklqwertyuiopzxcvnm,'.encode('ascii')
         f.write(testdata)
         f.flush()
+        files = list(self.tmpdir.glob('*'))
         self.assertEqual(len(files), 1)
         self.assertEqual(files[0].stat().st_size, HEADERSIZE + len(testdata))
 
         f.close()
+        files = list(self.tmpdir.glob('*'))
         self.assertEqual(len(files), 1)
         self.assertEqual(files[0].stat().st_size, HEADERSIZE + len(testdata))
 
