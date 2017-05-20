@@ -88,8 +88,6 @@ class ChunkFileHeader(object):
 
         return ChunkFileHeader(sig, version, iface_version, chunknum)
 
-class InvalidChunkFileError(Exception): pass
-
 class ChunkFile(object):
     def _open_existing(self, dirpath):
         entries = list(dirpath.glob('*'))
@@ -415,4 +413,4 @@ class ChunkFile(object):
 
 open = ChunkFile.open
 __all__ = ['SIGNATURE', 'VERSION', 'IFACE_VERSION', 'HEADERSIZE', 'CHUNKSIZE',
-           'CHUNKDATASIZE', 'InvalidChunkFileError', 'ChunkFile', 'open']
+           'CHUNKDATASIZE', 'ChunkFile', 'open']
