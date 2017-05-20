@@ -3,7 +3,7 @@ from pathlib import Path
 
 from chunkfile import *
 
-class TestChunkFileSeek(unittest.TestCase):
+class TestChunkFileTell(unittest.TestCase):
     def setUp(self):
         self.tmpdir = Path(tempfile.mkdtemp())
 
