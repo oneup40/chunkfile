@@ -88,26 +88,76 @@ class ChunkFileHeader(object):
 
         return ChunkFileHeader(sig, version, iface_version, chunknum)
 
+class Chunk(object):
+    def __init__(self, path, header):
+        self._path = path
+        self._header = header
+
+    @classmethod
+    def create(cls, basedir, chunknum):
+        path = basedir / 'chunk.{0:0>11d}.dat'.format(chunknum)
+        header = ChunkFileHeader(sig=SIGNATURE, version=VERSION,
+                                 iface_version=IFACE_VERSION,
+                                 chunknum=chunknum)
+
+        buf = bytearray(HEADERSIZE)
+        header.pack_into(buf)
+
+        with path.open('wb') as f:
+            f.write(buf)
+
+        return Chunk(path, header)
+
+    @classmethod
+    def open(cls, path):
+        if not path.is_file():
+            raise IOError('{0} is not a regular file'.format(path))
+
+        with path.open('rb') as f:
+            header_data = f.read(HEADERSIZE)
+
+        if len(header_data) < HEADERSIZE:
+            raise IOError('{0} is not a valid chunkfile'.format(path))
+
+        header = ChunkFileHeader.unpack_from(header_data)
+
+        return Chunk(path, header)
+
+    def chunknum(self):
+        return self._header.chunknum
+
+    def read(self, offset, count):
+        with self._path.open('rb') as f:
+            f.seek(HEADERSIZE + offset)
+            return f.read(count)
+
+    def write(self, offset, data):
+        with self._path.open('r+b') as f:
+            f.seek(HEADERSIZE + offset)
+            f.write(data)
+
+    def truncate(self, size):
+        with self._path.open('r+b') as f:
+            f.truncate(HEADERSIZE + size)
+
+    def size(self):
+        return self._path.stat().st_size - HEADERSIZE
+
+    def erase(self):
+        self._path.unlink()
+
 class ChunkFile(object):
     def _open_existing(self, dirpath):
         entries = list(dirpath.glob('*'))
         self.chunks = [None] * len(entries)
         for entry in entries:
-            if not entry.is_file():
-                raise IOError('{0} is not a regular file'.format(entry))
+            chunk = Chunk.open(entry)
+            chunknum = chunk.chunknum()
 
-            with entry.open('rb') as f:
-                data = f.read(HEADERSIZE)
-                if len(data) < HEADERSIZE:
-                    raise IOError('{0} is not a valid chunkfile'.format(entry))
+            if self.chunks[chunknum]:
+                raise IOError('Multiple files with chunknum {0:0>11d}'.format(chunknum))
 
-                hdr = ChunkFileHeader.unpack_from(data)
-                chunknum = hdr.chunknum
-
-                if self.chunks[chunknum]:
-                    raise IOError('Multiple files with chunknum {0:0>11d}'.format(chunknum))
-
-                self.chunks[chunknum] = (hdr, entry)
+            self.chunks[chunknum] = chunk
 
     def _create_new(self, dirpath):
         if dirpath.exists():
@@ -123,39 +173,14 @@ class ChunkFile(object):
         self.truncate(0)
 
     def _add_new_chunk(self):
-        chunknum = len(self.chunks)
-        pth = self.filename / 'chunk.{0:0>11d}.dat'.format(chunknum)
-        with pth.open('wb') as f:
-            hdr = ChunkFileHeader(sig=SIGNATURE, version=VERSION,
-                                  iface_version=IFACE_VERSION,
-                                  chunknum=len(self.chunks))
-
-            buf = bytearray(HEADERSIZE)
-            hdr.pack_into(buf)
-
-            f.write(buf)
-
-        self.chunks.append((hdr, pth))
-
-    def _zerofill_chunk(self, chunk):
-        with chunk[1].open('r+b') as f:
-            f.truncate(CHUNKSIZE)
-
-    def _ensure_chunk(self, chunknum):
-        while chunknum >= len(self.chunks):
-            self._add_new_chunk()
-        for chunk in self.chunks[:-1]:
-            self._zerofill_chunk(chunk)
+        self.chunks.append(Chunk.create(self.filename, len(self.chunks)))
 
     def _do_read(self, offset, length):
         n = offset // CHUNKDATASIZE
         if n >= len(self.chunks):
             return b''
 
-        s = b''
-        with self.chunks[n][1].open('rb') as f:
-            f.seek(HEADERSIZE + (offset % CHUNKDATASIZE))
-            s += f.read(length)
+        s = self.chunks[n].read(offset % CHUNKDATASIZE, length)
 
         if len(s) < length and n+1 < len(self.chunks):
             s += self._do_read(offset + len(s), length - len(s))
@@ -169,23 +194,13 @@ class ChunkFile(object):
 
         nextchunkofs = (n+1) * CHUNKDATASIZE
         nbytes = nextchunkofs - offset
-        with self.chunks[n][1].open('r+b') as f:
-            f.seek(HEADERSIZE + (offset % CHUNKDATASIZE))
-            f.write(data[:nbytes])
+        self.chunks[n].write(offset % CHUNKDATASIZE, data[:nbytes])
 
         if len(data) > nbytes:
             self._do_write(nextchunkofs, data[nbytes:])
 
     def _nbytes(self):
-        nbytes = 0
-
-        if len(self.chunks) > 1:
-            nbytes += (len(self.chunks) - 1) * CHUNKDATASIZE
-
-        if self.chunks:
-            nbytes += self.chunks[-1][1].stat().st_size - HEADERSIZE
-
-        return nbytes
+        return sum([chunk.size() for chunk in self.chunks])
 
     # public API starts here
 
@@ -370,24 +385,31 @@ class ChunkFile(object):
         if 'w' not in self.access:
             raise IOError('File not open for writing')
 
-        nchunks = size // CHUNKDATASIZE
-        if size % CHUNKDATASIZE:
-            nchunks += 1
+        nbytes = 0
+        chunknum = 0
 
-        for chunk in self.chunks[nchunks:]:
-            chunk[1].unlink()
-        self.chunks = self.chunks[:nchunks]
+        while nbytes + CHUNKDATASIZE < size:
+            if chunknum >= len(self.chunks):
+                self._add_new_chunk()
 
-        if nchunks == 0:
-            return
+            self.chunks[chunknum].truncate(CHUNKDATASIZE)
 
-        self._ensure_chunk(nchunks - 1)
+            nbytes += CHUNKDATASIZE
+            chunknum += 1
 
-        lastchunksize = size % CHUNKDATASIZE
-        if not lastchunksize: lastchunksize = CHUNKDATASIZE
+        if nbytes < size:
+            if chunknum >= len(self.chunks):
+                self._add_new_chunk()
 
-        with self.chunks[-1][1].open('r+b') as f:
-            f.truncate(HEADERSIZE + lastchunksize)
+            self.chunks[chunknum].truncate(size - nbytes)
+
+            nbytes += size - nbytes
+            chunknum += 1
+
+        for chunk in self.chunks[chunknum:]:
+            chunk.erase()
+
+        del self.chunks[chunknum:]
 
     # file.write(str): Write str to file.
     def write(self, s):
