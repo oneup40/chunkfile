@@ -100,6 +100,24 @@ class TestChunkFileRead(unittest.TestCase):
         self.assertEqual(data, b'')
         self.assertEqual(f.tell(), ofs)
         
+    def testReadAllCrossChunk(self):
+        tmpdir2 = Path(tempfile.mkdtemp())
+
+        try:
+            f = ChunkFile.open(tmpdir2, 'wb')
+            f.write('a'.encode('ascii') * CHUNKDATASIZE)
+            f.write('b'.encode('ascii') * 10)
+            f.close()
+
+            f = ChunkFile.open(tmpdir2, 'rb')
+            f.seek(CHUNKDATASIZE - 10)
+            data = f.read()
+            self.assertEqual(data, b'a'*10 + b'b'*10)
+            self.assertEqual(f.tell(), CHUNKDATASIZE + 10)
+        finally:
+            shutil.rmtree(str(tmpdir2))
+
+
 
 if __name__ == '__main__':
     unittest.main()
