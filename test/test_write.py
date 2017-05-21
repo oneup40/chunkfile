@@ -54,5 +54,28 @@ class TestChunkFileWrite(unittest.TestCase):
         totalsize = sum([x.stat().st_size for x in filelist])
         self.assertEqual(totalsize, CHUNKSIZE * 2)
 
+    def testAppend(self):
+        f = ChunkFile.open(self.tmpdir, 'ab')
+
+        self.assertEqual(f.tell(), 0)
+        data = b'have some data'
+        f.write(data)
+        self.assertEqual(f.tell(), len(data))
+
+        f.close()
+
+        f = ChunkFile.open(self.tmpdir, 'ab')
+
+        self.assertEqual(f.tell(), 0)
+        moredata = b'more data'
+        f.write(moredata)
+        self.assertEqual(f.tell(), len(data + moredata))
+
+        f.close()
+
+        f = ChunkFile.open(self.tmpdir, 'ab')
+        x = f.read()
+        self.assertEqual(x, data + moredata)
+
 if __name__ == '__main__':
     unittest.main()

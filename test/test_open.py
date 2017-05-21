@@ -147,6 +147,48 @@ class TestChunkFileOpen(unittest.TestCase):
         self.assertRaises(IOError, f.truncate)
         f.close()
 
+    def testANonExisting(self):
+        pth = self.tmpdir/'newdir'
+        self.assertTrue(not pth.exists())
+
+        f = ChunkFile.open(pth, mode='ab')
+        f.close()
+
+        self.assertTrue(pth.exists())
+
+        filelist = list(pth.glob('*'))
+        self.assertEqual(len(filelist), 0)
+
+    def testAExistingEmpty(self):
+        f = ChunkFile.open(self.tmpdir, mode='ab')
+        f.close()
+
+        entries = list(self.tmpdir.glob('*'))
+        self.assertEqual(len(entries), 0)
+
+    def testAExisting(self):
+        # create one first
+        f = ChunkFile.open(self.tmpdir, mode='ab')
+        f.write('blah blah blah'.encode('ascii'))
+        f.close()
+
+        entries = list(self.tmpdir.glob('*'))
+        self.assertEqual(len(entries), 1)
+        self.assertTrue(entries[0].stat().st_size > HEADERSIZE)
+
+        f = ChunkFile.open(self.tmpdir, mode='ab')
+        data = f.read()
+        f.close()
+
+        entries = list(self.tmpdir.glob('*'))
+        self.assertEqual(len(entries), 1)
+        self.assertTrue(entries[0].stat().st_size > HEADERSIZE)
+        self.assertEqual(data, b'blah blah blah')
+
+    def testDefaultA(self):
+        f = ChunkFile.open(self.tmpdir)
+        self.assertTrue('a' in f.mode)
+
 # TODO: test open with string filename works
 # TODO: test open with Path filename works
 

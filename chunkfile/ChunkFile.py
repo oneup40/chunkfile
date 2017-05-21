@@ -237,6 +237,7 @@ class ChunkFile(object):
         self.closed = False
         self.offset = 0
         self.access = ''
+        self.append = False
 
         if not mode:
             raise ValueError('empty mode string')
@@ -264,10 +265,8 @@ class ChunkFile(object):
             self._create_new(dirpath)
 
         if mode[0] == 'a':
-            raise NotImplementedError('append mode')
-
-            # TODO
-            self.access = 'w'
+            self.access = 'rw'
+            self.append = True
 
             if dirpath.exists():
                 self._open_existing(dirpath)
@@ -284,7 +283,7 @@ class ChunkFile(object):
 
     # TODO: buffering
     @staticmethod
-    def open(dirpath, mode='a'):
+    def open(dirpath, mode='ab'):
         return ChunkFile(dirpath, mode)
 
     # file.close(): close the file, deny further access
@@ -418,6 +417,9 @@ class ChunkFile(object):
 
         if 'w' not in self.access:
             raise IOError('File not open for writing')
+
+        if self.append:
+            self.seek(0, os.SEEK_END)
 
         self._do_write(self.offset, s)
         self.offset += len(s)
