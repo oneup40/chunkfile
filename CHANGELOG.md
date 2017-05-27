@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.0-b2] - 2017-05-27
+### Fixed
+- Fixed Travis-CI pypi deploy to generate universal wheels
+
 ## [1.0.0-b1] - 2017-05-27
 ### Added
 - Automatic pypi deploy via Travis-CI
@@ -11,5 +15,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Initial version
 
+[1.0.0-b2]: https://github.com/oneup40/chunkfile/compare/v1.0.0-b1...v1.0.0-b2
 [1.0.0-b1]: https://github.com/oneup40/chunkfile/compare/v1.0.0-b0...v1.0.0-b1
 [1.0.0-b0]: https://github.com/oneup40/chunkfile/tree/v1.0.0-b0
