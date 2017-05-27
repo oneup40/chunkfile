@@ -449,6 +449,16 @@ class ChunkFile(object):
     # file.newlines: We're not plaintext-focused so we don't support it.
     # file.softspace: We're not plaintext-focused so we don't support it.
 
+    # ContextManager
+    # __enter__(): called on entry to with-block
+    def __enter__(self):
+        return self
+
+    # __exit__(exc_type, exc_val, exc_tb): called on exit of with-block
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
 open = ChunkFile.open
 __all__ = ['SIGNATURE', 'VERSION', 'IFACE_VERSION', 'HEADERSIZE', 'CHUNKSIZE',
            'CHUNKDATASIZE', 'ChunkFile', 'open']
