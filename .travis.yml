@@ -1,16 +1,24 @@
 language: python
 python:
-    - "2.6"
-    - "2.7"
-    - "3.3"
-    - "3.4"
-    - "3.5"
-    - "3.6"
+- '2.6'
+- '2.7'
+- '3.3'
+- '3.4'
+- '3.5'
+- '3.6'
 install:
-    - pip install coveralls
-    - pip install pathlib
-    - pip install unittest2
+- pip install coveralls
+- pip install pathlib
+- pip install unittest2
 script:
-    - coverage run -m unittest2 discover
+- coverage run -m unittest2 discover
 after_success:
-    - coveralls
+- coveralls
+deploy:
+  provider: pypi
+  user: "oneup40"
+  password:
+    secure: pdGhaBEHZNR9Az0Rv4rBPdDfoZJX5c5ejJ0WXNKsWK3+QG2BxpVb3b/z0HbzSfREUzbcqAu/iLVWIiDId6LkT+ti3N+3nvtlszIe/JZn3d1XWb0b8DB4drXub6T0rpp50hluJTe00dzWWuSyMGv/KEWt0aHEuaZ2YrZIbhH0R5L6j6KDz2qNPAmZ2xrXOAv6fludiQN7tRYLFlYyz6VdGX3C8sIVblrjz5BnuSpoVBpwNOmbVFZTqvtOOl0lrgs40nNxZqNN7cVYhbhf5NG5Q4ZwE4ZUIWKHQvfNj7RMVwGuUY9HndTRlxHGSnlJL6pqi8EesuxlOrw9s31dFPk0pN+XM6ng0z10ULGl8YfXRKpD1SK4Sd55u/xg9DgaqmE2/Q6BJUfl/nI2EKkbMy295jidyU6FGG5STtPJybaHIBP4Uqs8Qs4tf/3XzoTO9AOCRxesjY5+0BJPcd6PUphFgeIIHoTvJC4AOdVbNmTDHZqkGu5M7Qm/9E8EZ0qGa+n0lGZuhVip5E60MDr6rRq1ptUR7KmSvfXVl+GaQQ6/HArVgbASQfp49l2XZOMNWkQUz7pM1podeIahxVOSmXLlIUti3eeBm/6JuI5jnFFYYxkkNWI9m1IJCZtRJsoPT+S1dM5XGciyP+kx/rglPBxotHtgEa29zk92saxYDmuEFsM=
+  on:
+    tags: true
+  distributions: "sdist bdist_wheel"
