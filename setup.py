@@ -8,14 +8,14 @@ with open(os.path.join(here, 'README.md'), 'r') as f:
 
 setup(
 	name='chunkfile',
-	version='0.0a0.dev0',
+	version='1.0.0-b0',
 	description='A file-like interface backed by multiple smaller files.',
 	url='https://github.com/oneup40/chunkfile',
 	author='oneup40',
 	author_email='oneup40@gmail.com',
 	license='Free for non-commercial use',
 	classifiers=[
-		'Development Status :: 1 - Planning',
+		'Development Status :: 4 - Beta',
 		'Intended Audience :: Developers',
 		'License :: Free for non-commercial use',
 		'Operating System :: POSIX :: Linux',

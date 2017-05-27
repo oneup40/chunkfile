@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 SIGNATURE = "CHNKFILE"
-VERSION = (0,1)
+VERSION = (1,0)
 IFACE_VERSION = 1
 HEADERSIZE = 4096
 CHUNKSIZE = 512 * 1024 * 1024
