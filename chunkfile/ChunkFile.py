@@ -149,15 +149,15 @@ class Chunk(object):
 class ChunkFile(object):
     def _open_existing(self, dirpath):
         entries = list(dirpath.glob('*'))
-        self.chunks = [None] * len(entries)
+        self._chunks = [None] * len(entries)
         for entry in entries:
             chunk = Chunk.open(entry)
             chunknum = chunk.chunknum()
 
-            if self.chunks[chunknum]:
+            if self._chunks[chunknum]:
                 raise IOError('Multiple files with chunknum {0:0>11d}'.format(chunknum))
 
-            self.chunks[chunknum] = chunk
+            self._chunks[chunknum] = chunk
 
     def _create_new(self, dirpath):
         if dirpath.exists():
@@ -168,39 +168,39 @@ class ChunkFile(object):
                 raise IOError('No such file or directory: {0}'.format(dirpath))
 
             dirpath.mkdir()
-            self.chunks = []
+            self._chunks = []
 
         self.truncate(0)
 
     def _add_new_chunk(self):
-        self.chunks.append(Chunk.create(self.filename, len(self.chunks)))
+        self._chunks.append(Chunk.create(self._dirpath, len(self._chunks)))
 
     def _do_read(self, offset, length):
         n = offset // CHUNKDATASIZE
-        if n >= len(self.chunks):
+        if n >= len(self._chunks):
             return b''
 
-        s = self.chunks[n].read(offset % CHUNKDATASIZE, length)
+        s = self._chunks[n].read(offset % CHUNKDATASIZE, length)
 
-        if len(s) < length and n+1 < len(self.chunks):
+        if len(s) < length and n+1 < len(self._chunks):
             s += self._do_read(offset + len(s), length - len(s))
 
         return s
 
     def _do_write(self, offset, data):
         n = offset // CHUNKDATASIZE
-        while n >= len(self.chunks):
+        while n >= len(self._chunks):
             self._add_new_chunk()
 
         nextchunkofs = (n+1) * CHUNKDATASIZE
         nbytes = nextchunkofs - offset
-        self.chunks[n].write(offset % CHUNKDATASIZE, data[:nbytes])
+        self._chunks[n].write(offset % CHUNKDATASIZE, data[:nbytes])
 
         if len(data) > nbytes:
             self._do_write(nextchunkofs, data[nbytes:])
 
     def _nbytes(self):
-        return sum([chunk.size() for chunk in self.chunks])
+        return sum([chunk.size() for chunk in self._chunks])
 
     # public API starts here
 
@@ -231,13 +231,14 @@ class ChunkFile(object):
     # Mode must contain 'b' (text data not supported)
 
     def __init__(self, dirpath, mode='ab'):
-        self.filename = Path(dirpath)
-        self.mode = mode
-        self.chunks = []
-        self.closed = False
-        self.offset = 0
-        self.access = ''
-        self.append = False
+        self._name = str(dirpath)
+        self._dirpath = Path(dirpath)
+        self._mode = mode
+        self._chunks = []
+        self._closed = False
+        self._offset = 0
+        self._access = ''
+        self._append = False
 
         if not mode:
             raise ValueError('empty mode string')
@@ -254,19 +255,19 @@ class ChunkFile(object):
             raise ValueError('The specified path is not a directory: {0}'.format(dirpath))
 
         if mode[0] == 'r':
-            self.access = 'r'
+            self._access = 'r'
             if not dirpath.exists():
                 raise IOError('No such directory: {0}'.format(dirpath))
 
             self._open_existing(dirpath)
 
         if mode[0] == 'w':
-            self.access = 'w'
+            self._access = 'w'
             self._create_new(dirpath)
 
         if mode[0] == 'a':
-            self.access = 'rw'
-            self.append = True
+            self._access = 'rw'
+            self._append = True
 
             if dirpath.exists():
                 self._open_existing(dirpath)
@@ -275,7 +276,7 @@ class ChunkFile(object):
 
         for c in mode[1:]:
             if c == '+':
-                self.access = 'rw'
+                self._access = 'rw'
             elif c == 'b':
                 pass
             else:
@@ -288,13 +289,13 @@ class ChunkFile(object):
 
     # file.close(): close the file, deny further access
     def close(self):
-        if not self.closed:
+        if not self._closed:
             self.flush()
-            self.closed = True
+            self._closed = True
 
     # file.flush(): flush the internal buffer
     def flush(self):
-        if self.closed:
+        if self._closed:
             raise ValueError('I/O operation on closed file')
 
         # we don't currently buffer anything :(
@@ -312,17 +313,17 @@ class ChunkFile(object):
     #                        bytes if EOF is hit. If *size* is negative or
     #                        omitted, read all data.
     def read(self, size=-1):
-        if self.closed:
+        if self._closed:
             raise ValueError('I/O operation on closed file')
 
-        if 'r' not in self.access:
+        if 'r' not in self._access:
             raise IOError('File not open for reading')
 
         if size < 0:
-            size = self._nbytes() - self.offset
+            size = self._nbytes() - self._offset
 
-        data = self._do_read(self.offset, size)
-        self.offset += len(data)
+        data = self._do_read(self._offset, size)
+        self._offset += len(data)
 
         return data
 
@@ -346,13 +347,13 @@ class ChunkFile(object):
         #       Python turns the EINVAL into an IOError Errno 22.
         #   * Bad seek mode is caught by Python and doesn't make a syscall at
         #       all. Python raises IOError Errno 22.
-        if self.closed:
+        if self._closed:
             raise ValueError('I/O operation on closed file')
 
         if whence == os.SEEK_SET:
             startofs = 0
         elif whence == os.SEEK_CUR:
-            startofs = self.offset
+            startofs = self._offset
         elif whence == os.SEEK_END:
             startofs = self._nbytes()
         else:
@@ -362,14 +363,14 @@ class ChunkFile(object):
         if new_offset < 0 or new_offset >= 2**64:
             raise IOError('Invalid argument')
 
-        self.offset = new_offset
+        self._offset = new_offset
 
     # file.tell(): Return the file's current position.
     def tell(self):
-        if self.closed:
+        if self._closed:
             raise ValueError('I/O operation on closed file')
 
-        return self.offset
+        return self._offset
 
     # file.truncate([size]): Reduce the file's size.  Current position is
     #                            not changed. Handling size > current size is
@@ -378,60 +379,73 @@ class ChunkFile(object):
         # TODO: figure out what default does
         # TODO: figure out what size > current size does on various platforms
 
-        if self.closed:
+        if self._closed:
             raise ValueError('I/O operation on closed file')
 
-        if 'w' not in self.access:
+        if 'w' not in self._access:
             raise IOError('File not open for writing')
 
         nbytes = 0
         chunknum = 0
 
         while nbytes + CHUNKDATASIZE < size:
-            if chunknum >= len(self.chunks):
+            if chunknum >= len(self._chunks):
                 self._add_new_chunk()
 
-            self.chunks[chunknum].truncate(CHUNKDATASIZE)
+            self._chunks[chunknum].truncate(CHUNKDATASIZE)
 
             nbytes += CHUNKDATASIZE
             chunknum += 1
 
         if nbytes < size:
-            if chunknum >= len(self.chunks):
+            if chunknum >= len(self._chunks):
                 self._add_new_chunk()
 
-            self.chunks[chunknum].truncate(size - nbytes)
+            self._chunks[chunknum].truncate(size - nbytes)
 
             nbytes += size - nbytes
             chunknum += 1
 
-        for chunk in self.chunks[chunknum:]:
+        for chunk in self._chunks[chunknum:]:
             chunk.erase()
 
-        del self.chunks[chunknum:]
+        del self._chunks[chunknum:]
 
     # file.write(str): Write str to file.
     def write(self, s):
-        if self.closed:
+        if self._closed:
             raise ValueError('I/O operation on closed file')
 
-        if 'w' not in self.access:
+        if 'w' not in self._access:
             raise IOError('File not open for writing')
 
-        if self.append:
+        if self._append:
             self.seek(0, os.SEEK_END)
 
-        self._do_write(self.offset, s)
-        self.offset += len(s)
+        self._do_write(self._offset, s)
+        self._offset += len(s)
 
     # file.writelines(sequence): We're not plaintext-focused so we don't
     #                                support it.
 
     # file.closed: boolean; read-only
+    @property
+    def closed(self):
+        return self._closed
+
     # file.encoding: We're not plaintext-focused so we don't support it.
     # file.errors: ?
+
     # file.mode: The mode parameter passed to open. Read-only.
+    @property
+    def mode(self):
+        return self._mode
+
     # file.name: The name parameter passed to open. Read-only.
+    @property
+    def name(self):
+        return self._name
+
     # file.newlines: We're not plaintext-focused so we don't support it.
     # file.softspace: We're not plaintext-focused so we don't support it.
 
